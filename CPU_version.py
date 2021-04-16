@@ -1,3 +1,9 @@
+from piUart import *
+# USAGE
+# python ball_tracking.py --video ball_tracking_example.mp4
+# python ball_tracking.py
+
+# import the necessary packages
 import multiprocessing as mp
 from collections import deque
 from imutils.video import VideoStream
@@ -8,6 +14,7 @@ import imutils
 import time
 import matplotlib.pyplot as plt
 import pyrealsense2 as rs
+import RPi.GPIO as GPIO
 
 
 
@@ -34,17 +41,20 @@ def isClose(color_image,depth_image,edge_image,row,column,framecount):
                 if (edge_image[point_r][point_c]>200):
                     forward = depth_image[point_r+2*delta_r][point_c+2*delta_c]
                     backward = depth_image[point_r-2*delta_r][point_c-2*delta_c]
-                    diff = abs(forward-backward)
+                    diff = forward-backward
                     if (diff>0.15):
+                        if gap==1:
+                            if (i-rec) >= 3:
+                                diff2 = forward - arm
+                                if diff2<0.1:
+                                    bc = str(framecount)
+                                    print('blocked'+ bc )
+                                    return True
                         if gap==0:
                             gap = gap+1
                             arm = backward
-                        if gap==1:
-                            diff2 = forward - arm
-                            if diff2<0.1:
-                                bc = str(framecount)
-                                print('blocked'+ bc )
-                                return True
+                            rec=i
+                        
                                 
                     
             delta_c=delta_c+1
@@ -84,7 +94,7 @@ def detection(color_image,depth_image,decf):
 
     last2_r=-100
     last2_c=-100
-    r=30*30
+    r=13*13
     for rt in range(188):
         for ct in range(268):
             row=rt+25
@@ -101,7 +111,13 @@ def detection(color_image,depth_image,decf):
             if flag:
                 break
         if flag:
+            #
+            GPIO.output(18, GPIO.HIGH)
             break
+        
+    if not flag:
+        # mie deng
+        GPIO.output(18, GPIO.LOW)
 
     decf.value=1
 
@@ -157,23 +173,23 @@ def tracking(color_image,trcf):
             if (cx < 220):
                 send_to_UART(ted, 'L\n')
                 print("L")
-                frame = cv2.putText(frame, 'left', org, font, fontScale, color, thickness, cv2.LINE_AA) 
+                #frame = cv2.putText(frame, 'left', org, font, fontScale, color, thickness, cv2.LINE_AA) 
                 received = read_byte_UART(ted)
                 print(received)
                 received = read_byte_UART(ted)
                 print(received)
 
             elif cx > 420:
-                send_to_UART(ted, "R\n")
+                send_to_UART(ted, 'R\n')
                 print("R")
-                frame = cv2.putText(frame, 'right', org, font, fontScale, color, thickness, cv2.LINE_AA) 
+                #frame = cv2.putText(frame, 'right', org, font, fontScale, color, thickness, cv2.LINE_AA) 
                 received = read_byte_UART(ted)
                 print(received)
                 received = read_byte_UART(ted)
                 print(received)
-            '''
+            
             if cy < 140:
-                send_to_UART(ted, "U\n")
+                send_to_UART(ted, 'U\n')
                 print("U")
                 frame = cv2.putText(frame, 'up', org2, font, fontScale, color, thickness, cv2.LINE_AA) 
                 received = read_byte_UART(ted)
@@ -182,14 +198,15 @@ def tracking(color_image,trcf):
                 print(received)
 
             elif cy > 240:
-                send_to_UART(ted, "D\n")
+                send_to_UART(ted, 'D\n')
                 print("D")
                 frame = cv2.putText(frame, 'down', org2, font, fontScale, color, thickness, cv2.LINE_AA) 
                 received = read_byte_UART(ted)
                 print(received)
+                
                 received = read_byte_UART(ted)
                 print(received)
-            '''
+             
 
 
     # update the points queue
@@ -220,6 +237,8 @@ if __name__=='__main__':
 
     # Raspberry Pi UART Init
     ted = init_UART()
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(18,GPIO.OUT)
 
 
     # necessary config for color detection
