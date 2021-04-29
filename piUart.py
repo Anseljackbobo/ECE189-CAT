@@ -23,11 +23,15 @@ import serial
 # ted.write("Hello World".encode("gbk"))
 
 def init_UART():
-    return serial.Serial(port="/dev/ttyAMA1", baudrate=9600)
+    ted = serial.Serial(port="/dev/ttyTHS1", baudrate=9600)
+    # send_to_UART(ted, "Initiated\n")
+    return ted
 
 
 
 def send_to_UART(ted, message):
+    # message = message.strip()
+    print("sending "+message+"\n")
     ted.write(message.encode("ascii"))
 
 
